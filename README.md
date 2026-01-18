@@ -137,10 +137,8 @@ MIT License - feel free to use for your portfolio!
 
 ## 👨‍💻 Author
 
-**Your Name**
-- LinkedIn: [Your Profile]
-- Portfolio: [Your Website]
-- Email: your.email@example.com
+Vedika Rana
+- Email: vedikarana14@gmail.com
 
 ---
 
