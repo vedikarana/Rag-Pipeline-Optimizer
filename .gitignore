@@ -1,0 +1,21 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+
+# Node
+node_modules/
+build/
+.env.local
+
+# Data
+backend/data/
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.swp

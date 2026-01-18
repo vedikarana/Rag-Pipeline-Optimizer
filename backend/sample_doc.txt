@@ -1,0 +1,16 @@
+
+        RAG Systems Overview
+        
+        Retrieval-Augmented Generation (RAG) is a technique that combines information retrieval 
+        with language generation. It works by first retrieving relevant documents from a knowledge 
+        base, then using those documents as context for generating responses.
+        
+        Key components of RAG:
+        1. Document Chunking: Breaking documents into smaller pieces (chunks)
+        2. Embeddings: Converting text into vector representations
+        3. Vector Database: Storing and retrieving similar chunks
+        4. Generation: Using an LLM to synthesize answers from retrieved chunks
+        
+        Common chunk sizes range from 256 to 1024 tokens, with overlap between chunks to 
+        maintain context continuity.
+        
