@@ -137,18 +137,11 @@ MIT License - feel free to use for your portfolio!
 
 ## 👨‍💻 Author
 
-**Your Name**
-- LinkedIn: [Your Profile]
-- Portfolio: [Your Website]
-- Email: your.email@example.com
+Vedika Rana
+- Email: vedikarana14@gmail.com
 
----
+
 
 ⭐ Star this repo if it helped you!
 
 
-## 📸 Screenshots
-
-![Upload](C:\Users\vedik\OneDrive\Pictures\Screenshots 1\Screenshot 2026-01-18 195145.png)
-![Results](C:\Users\vedik\OneDrive\Pictures\Screenshots 1\Screenshot 2026-01-18 195413.png)
-![Metrics](C:\Users\vedik\OneDrive\Pictures\Screenshots 1\Screenshot 2026-01-18 195443.png)
