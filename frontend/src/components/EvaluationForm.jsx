@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, X, Play, Settings } from 'lucide-react';
+import { Plus, X, Play } from 'lucide-react';
 
 function EvaluationForm({ onEvaluate, isEvaluating }) {
   const [questions, setQuestions] = useState(['']);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+
 
   const addQuestion = () => {
     setQuestions([...questions, '']);
