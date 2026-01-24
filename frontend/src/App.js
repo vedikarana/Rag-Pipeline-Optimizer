@@ -6,7 +6,7 @@ import EvaluationForm from './components/EvaluationForm';
 import ResultsDashboard from './components/ResultsDashboard';
 import HistoryPanel from './components/HistoryPanel';
 
-const API_URL = 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'https://rag-optimizer-api.onrender.com';
 
 function App() {
   const [step, setStep] = useState(1);
