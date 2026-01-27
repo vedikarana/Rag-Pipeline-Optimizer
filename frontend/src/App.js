@@ -34,29 +34,26 @@ function App() {
   };
 
   const handleIngest = async () => {
-    setIsIngesting(true);
-    try {
-      await axios.post(`${API_URL}/ingest`);
-      setStep(3);
-    } catch (error) {
-      alert('Ingestion failed: ' + error.message);
-    } finally {
-      setIsIngesting(false);
-    }
-  };
+  setIsIngesting(true);
+  try {
+    // Show progress message
+    console.log("⏳ Ingesting into 4 pipelines... This may take 30-60 seconds on free tier");
+    
+    const response = await axios.post(`${API_URL}/ingest`, {}, {
+      timeout: 120000  // 2 minute timeout
+    });
+    
+    setStep(3);
+    alert("✅ Documents ingested successfully!");
+  } catch (error) {
+    console.error(error);
+    alert('Ingestion failed: ' + (error.response?.data?.detail || error.message));
+  } finally {
+    setIsIngesting(false);
+  }
+};
 
-  const handleEvaluate = async (questions) => {
-    setIsEvaluating(true);
-    try {
-      const response = await axios.post(`${API_URL}/evaluate`, {
-        test_questions: questions
-      });
-      
-      const resultWithTimestamp = {
-        ...response.data,
-        timestamp: new Date().toISOString(),
-        questions: questions
-      };
+  
       
       setResults(resultWithTimestamp);
       setHistory([resultWithTimestamp, ...history].slice(0, 10));
@@ -67,7 +64,20 @@ function App() {
       setIsEvaluating(false);
     }
   };
-
+const handleEvaluate = async (questions) => {
+  setIsEvaluating(true);
+  try {
+    console.log("⏳ Evaluating 4 pipelines... This may take 1-2 minutes");
+    
+    const response = await axios.post(`${API_URL}/evaluate`, {
+      test_questions: questions
+    }, {
+      timeout: 180000  // 3 minute timeout
+    });
+    
+    // ... rest of code
+  }
+};
   const exportResults = () => {
     if (!results) return;
     
