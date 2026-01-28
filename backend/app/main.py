@@ -219,3 +219,26 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+@app.post("/ingest-sample")
+async def ingest_sample():
+    """Ingest the built-in sample document"""
+    global rag_comparator
+    
+    sample_file = "./sample_doc.txt"
+    
+    if not os.path.exists(sample_file):
+        raise HTTPException(status_code=404, detail="Sample file not found")
+    
+    try:
+        rag_comparator = RAGComparator()
+        rag_comparator.ingest_documents([sample_file])
+        
+        return {
+            "message": "Sample document ingested into all 4 pipelines",
+            "pipelines": list(rag_comparator.pipelines.keys()),
+            "documents": ["sample_doc.txt"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
