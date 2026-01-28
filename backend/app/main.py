@@ -91,18 +91,30 @@ async def upload_documents(files: List[UploadFile] = File(...)):
 # --------------------------------------------------
 @app.post("/ingest")
 async def ingest_documents():
-    global rag_comparator
-
+    """Ingest uploaded documents into all RAG pipelines"""
+    global rag_comparator, uploaded_files
+    
+    # WORKAROUND: If no files uploaded, use sample
     if not uploaded_files:
-        raise HTTPException(status_code=400, detail="Upload documents first")
-
-    rag_comparator = RAGComparator()
-    rag_comparator.ingest_documents(uploaded_files)
-
-    return {
-        "message": "Documents ingested successfully",
-        "pipelines": list(rag_comparator.pipelines.keys()),
-    }
+        sample_file = "./sample_doc.txt"
+        if os.path.exists(sample_file):
+            uploaded_files = [sample_file]
+            print("⚠️  Using sample_doc.txt as no uploaded files found")
+        else:
+            raise HTTPException(status_code=400, detail="No documents available. Please upload files or ensure sample_doc.txt exists.")
+    
+    try:
+        rag_comparator = RAGComparator()
+        rag_comparator.ingest_documents(uploaded_files)
+        
+        return {
+            "message": "Documents ingested into all 4 pipelines",
+            "pipelines": list(rag_comparator.pipelines.keys()),
+            "documents": [os.path.basename(f) for f in uploaded_files]
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 # --------------------------------------------------
 # Evaluate Pipelines
