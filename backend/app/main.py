@@ -6,7 +6,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from app.config import OPENAI_API_KEY
+from app.config import GROQ_API_KEY
 from app.models.schemas import (
     EvaluationRequest,
     EvaluationResponse,
@@ -27,7 +27,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,12 +46,53 @@ uploaded_files: List[str] = []
 async def root():
     return {
         "status": "healthy",
-        "api_key_loaded": bool(OPENAI_API_KEY),
+        "api_key_loaded": bool(GROQ_API_KEY),
         "pipelines_ready": rag_comparator is not None,
     }
 
 # --------------------------------------------------
-# Upload Documents
+# COMBINED: Upload + Ingest (Solves free tier restart issue)
+# --------------------------------------------------
+@app.post("/upload-and-ingest")
+async def upload_and_ingest(files: List[UploadFile] = File(...)):
+    """Upload and immediately ingest documents in one request"""
+    global rag_comparator
+    
+    if not files:
+        raise HTTPException(status_code=400, detail="No files uploaded")
+    
+    # Save files temporarily
+    upload_dir = "./data/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_paths = []
+    for file in files:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in [".pdf", ".txt", ".docx"]:
+            raise HTTPException(status_code=400, detail=f"Unsupported: {ext}")
+        
+        file_path = os.path.join(upload_dir, file.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        file_paths.append(file_path)
+    
+    try:
+        print(f"📚 Processing {len(file_paths)} files...")
+        rag_comparator = RAGComparator()
+        rag_comparator.ingest_documents(file_paths)
+        
+        return {
+            "message": f"Successfully processed {len(file_paths)} files",
+            "pipelines": list(rag_comparator.pipelines.keys()),
+            "files": [os.path.basename(f) for f in file_paths]
+        }
+    
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+
+# --------------------------------------------------
+# OLD ENDPOINTS (kept for backward compatibility)
 # --------------------------------------------------
 @app.post("/upload")
 async def upload_documents(files: List[UploadFile] = File(...)):
@@ -63,22 +104,18 @@ async def upload_documents(files: List[UploadFile] = File(...)):
     upload_dir = "./data/uploads"
     if os.path.exists(upload_dir):
         shutil.rmtree(upload_dir)
-
     os.makedirs(upload_dir, exist_ok=True)
+    
     uploaded_files = []
 
     for file in files:
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in [".pdf", ".txt", ".docx"]:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unsupported file type: {ext}",
-            )
+            raise HTTPException(status_code=400, detail=f"Unsupported: {ext}")
 
         file_path = os.path.join(upload_dir, file.filename)
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
-
         uploaded_files.append(file_path)
 
     return {
@@ -86,35 +123,29 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         "files": [os.path.basename(f) for f in uploaded_files],
     }
 
-# --------------------------------------------------
-# Ingest Documents
-# --------------------------------------------------
 @app.post("/ingest")
 async def ingest_documents():
-    """Ingest uploaded documents into all RAG pipelines"""
     global rag_comparator, uploaded_files
     
-    # WORKAROUND: If no files uploaded, use sample
     if not uploaded_files:
         sample_file = "./sample_doc.txt"
         if os.path.exists(sample_file):
             uploaded_files = [sample_file]
-            print("⚠️  Using sample_doc.txt as no uploaded files found")
+            print("⚠️  Using sample_doc.txt")
         else:
-            raise HTTPException(status_code=400, detail="No documents available. Please upload files or ensure sample_doc.txt exists.")
+            raise HTTPException(status_code=400, detail="No documents available")
     
     try:
         rag_comparator = RAGComparator()
         rag_comparator.ingest_documents(uploaded_files)
         
         return {
-            "message": "Documents ingested into all 4 pipelines",
+            "message": "Documents ingested",
             "pipelines": list(rag_comparator.pipelines.keys()),
             "documents": [os.path.basename(f) for f in uploaded_files]
         }
-    
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed: {str(e)}")
 
 # --------------------------------------------------
 # Evaluate Pipelines
@@ -122,17 +153,14 @@ async def ingest_documents():
 @app.post("/evaluate", response_model=EvaluationResponse)
 async def evaluate_pipelines(request: EvaluationRequest):
     if not rag_comparator:
-        raise HTTPException(
-            status_code=400,
-            detail="No pipelines initialized. Run /ingest first.",
-        )
+        raise HTTPException(status_code=400, detail="Run /ingest first")
 
     if not request.test_questions:
-        raise HTTPException(status_code=400, detail="No test questions provided")
+        raise HTTPException(status_code=400, detail="No questions provided")
 
     judge = GPTJudge()
 
-    print("\n🚀 Running RAG comparison...")
+    print("\n🚀 Running evaluation...")
     raw_results = rag_comparator.compare_pipelines(request.test_questions)
 
     evaluated_results = []
@@ -174,7 +202,7 @@ async def evaluate_pipelines(request: EvaluationRequest):
     )
 
 # --------------------------------------------------
-# Winner Calculation
+# Helper
 # --------------------------------------------------
 def calculate_winner(results: List[Dict]) -> tuple:
     scores = {}
@@ -214,43 +242,9 @@ def calculate_winner(results: List[Dict]) -> tuple:
 
     return winner, summary
 
-# --------------------------------------------------
-# Status
-# --------------------------------------------------
 @app.get("/status")
 async def status():
     return {
         "documents_uploaded": len(uploaded_files),
         "pipelines_ready": rag_comparator is not None,
     }
-
-# --------------------------------------------------
-# Run Server
-# --------------------------------------------------
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
-@app.post("/ingest-sample")
-async def ingest_sample():
-    """Ingest the built-in sample document"""
-    global rag_comparator
-    
-    sample_file = "./sample_doc.txt"
-    
-    if not os.path.exists(sample_file):
-        raise HTTPException(status_code=404, detail="Sample file not found")
-    
-    try:
-        rag_comparator = RAGComparator()
-        rag_comparator.ingest_documents([sample_file])
-        
-        return {
-            "message": "Sample document ingested into all 4 pipelines",
-            "pipelines": list(rag_comparator.pipelines.keys()),
-            "documents": ["sample_doc.txt"]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")

@@ -17,21 +17,31 @@ function App() {
   const [history, setHistory] = useState([]);
 
   const handleFileUpload = async (files) => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
 
-    try {
-      const response = await axios.post(`${API_URL}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setUploadedFiles(response.data.files);
-      setStep(2);
-    } catch (error) {
-      alert('Upload failed: ' + error.message);
-    }
-  };
+  try {
+    setIsIngesting(true); // Show loading immediately
+    
+    // Use combined endpoint
+    const response = await axios.post(`${API_URL}/upload-and-ingest`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000 // 3 minute timeout
+    });
+    
+    setUploadedFiles(response.data.files);
+    alert('✅ Files processed successfully! Moving to evaluation...');
+    setStep(3); // Skip to evaluation directly
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    alert('Upload failed: ' + (error.response?.data?.detail || error.message));
+  } finally {
+    setIsIngesting(false);
+  }
+};
 
   const handleIngest = async () => {
     setIsIngesting(true);

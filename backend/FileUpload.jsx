@@ -23,12 +23,18 @@ function FileUpload({ onUpload }) {
   };
 
   const handleUpload = () => {
-    if (files.length === 0) {
-      alert('Please select at least one file');
-      return;
-    }
-    onUpload(files);
-  };
+  if (files.length === 0) {
+    alert('Please select at least one file');
+    return;
+  }
+  
+  // Show loading message
+  if (!window.confirm(`Upload and process ${files.length} file(s)? This will take 30-60 seconds.`)) {
+    return;
+  }
+  
+  onUpload(files);
+};
 
   return (
     <div className="space-y-6">
