@@ -17,22 +17,42 @@ function App() {
   const [history, setHistory] = useState([]);
 
   const handleFileUpload = async (files) => {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
 
-    try {
-      const response = await axios.post(`${API_URL}/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setUploadedFiles(response.data.files);
-      setStep(2);
-    } catch (error) {
-      alert('Upload failed: ' + error.message);
-    }
-  };
-
+  setIsIngesting(true); // Show loading immediately
+  
+  try {
+    console.log("⏳ Uploading and processing files... (60-90 seconds)");
+    
+    // Use COMBINED endpoint
+    const response = await axios.post(
+      `${API_URL}/upload-and-ingest`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 300000, // 5 minutes
+        onUploadProgress: (progressEvent) => {
+          console.log(`Upload progress: ${Math.round((progressEvent.loaded * 100) / progressEvent.total)}%`);
+        }
+      }
+    );
+    
+    console.log("✅ Processing complete!", response.data);
+    setUploadedFiles(response.data.files);
+    alert(`✅ Successfully processed ${response.data.files.length} file(s)! Moving to evaluation...`);
+    setStep(3); // Go directly to evaluation (skip ingest step)
+    
+  } catch (error) {
+    console.error('Processing error:', error);
+    const errorMsg = error.response?.data?.detail || error.message || 'Network timeout - free tier is slow, please wait longer';
+    alert('Failed: ' + errorMsg);
+  } finally {
+    setIsIngesting(false);
+  }
+};
   const handleIngest = async () => {
   setIsIngesting(true);
   try {
