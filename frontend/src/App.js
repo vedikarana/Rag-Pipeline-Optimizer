@@ -36,23 +36,20 @@ function App() {
   const handleIngest = async () => {
   setIsIngesting(true);
   try {
-    // Show progress message
-    console.log("⏳ Ingesting into 4 pipelines... This may take 30-60 seconds on free tier");
-    
+    console.log("Starting ingestion...");
     const response = await axios.post(`${API_URL}/ingest`, {}, {
-      timeout: 120000  // 2 minute timeout
+      timeout: 300000  // 5 MINUTE timeout
     });
-    
+    console.log("Ingestion response:", response.data);
     setStep(3);
-    alert("✅ Documents ingested successfully!");
   } catch (error) {
-    console.error(error);
+    console.error("Ingestion error:", error);
+    console.error("Error details:", error.response?.data);
     alert('Ingestion failed: ' + (error.response?.data?.detail || error.message));
   } finally {
     setIsIngesting(false);
   }
 };
-
   
       
       setResults(resultWithTimestamp);
